@@ -10,6 +10,33 @@ public:
     virtual ~Command() {}
 };
 
+// Invoker
+class Remote {
+private:
+    std::queue<Command*> Pending;
+    std::stack<Command*> Executed;
+public:
+    void setCommand(Command* command) {
+        Pending.push(command);
+    }
+    void pressButton() {
+        if (!Pending.empty()) {
+            Command* command = Pending.front();
+            command->execute();
+            Pending.pop();
+            Executed.push(command);
+        }
+    }
+    void pressUndo() {
+        if (!Executed.empty()) {
+            Command* command = Executed.top();
+            command->undo();
+            Executed.pop();
+        }
+    }
+};
+
+//Light
 // Receiver
 class Light {
 public:
@@ -49,30 +76,44 @@ public:
     }
 };
 
-// Invoker
-class Remote {
-private:
-    std::queue<Command*> commandQ;
-    std::stack<Command*> undoQ;
+//Fan
+// Receiver
+class Fan {
 public:
-    void setCommand(Command* command) {
-        commandQ.push(command);
+    void on() {
+        std::cout << "Fan is on" << std::endl;
     }
-    void pressButton() {
-        if (!commandQ.empty()) {
-            Command* command = commandQ.front();
-            command->execute();
-            commandQ.pop();
-            undoQ.push(command);
-        }
+    void off() {
+        std::cout << "Fan is off" << std::endl;
     }
-    void pressUndo() {
-        if (!undoQ.empty()) {
-            Command* command = undoQ.top();
-            command->undo();
-            undoQ.pop();
-        }
+};
+
+// Concrete Command
+class FanOnCommand : public Command {
+private:
+    Fan* fan;
+public:
+    FanOnCommand(Fan* fan) : fan(fan) {}
+    void execute() override {
+		fan->on();
+	}
+    void undo() override {
+		fan->off();
+	}
+};
+
+// Concrete Command
+class FanOffCommand : public Command {
+private:
+    Fan* fan;
+public:
+    FanOffCommand(Fan* fan) : fan(fan) {}
+    void execute() override {
+        fan->off();
     }
+    void undo() override {
+		fan->on();
+	}
 };
 
 // Client
@@ -81,16 +122,22 @@ int main() {
     LightOnCommand lightOnCommand(&light);
     LightOffCommand lightOffCommand(&light);
 
+    Fan fan;
+    FanOnCommand fanOnCommand(&fan);
+    FanOffCommand fanOffCommand(&fan);
+
     Remote remote;
     remote.setCommand(&lightOnCommand);
+    remote.setCommand(&fanOnCommand);
+
+    remote.pressButton();
+    remote.pressButton();
+
+    remote.pressUndo();
+
     remote.setCommand(&lightOffCommand);
 
-    // Execute commands
     remote.pressButton();
-    remote.pressButton();
-
-    // Undo last command
-    remote.pressUndo();
 
     return 0;
 }
